@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculateur — L'arrêt de travail · TMK Performances</title>
+<style>
+  :root{
+    --prune:#8C1E70; --prune-dark:#5E1349; --prune-light:#F4E6EE;
+    --vert:#283C28; --gris:#3C3C3C; --accent:#C77BAA;
+    --gris-moyen:#8A7A85; --trame:#E8DCE5; --fond:#FAF6F8; --blanc:#fff;
+    --ok:#2F7A4F; --warn:#B5852A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       background:var(--fond);color:var(--gris);line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto;padding:0 18px 60px}
+  header{background:var(--prune-dark);color:#fff;padding:26px 0 22px;margin-bottom:22px}
+  header .wrap{padding-bottom:0}
+  .brand{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  header h1{margin:.25rem 0 .35rem;font-size:1.5rem}
+  header p{margin:0;color:#EBD9E4;font-size:.95rem}
+  .badge{display:inline-flex;align-items:center;gap:.5em;margin-top:14px;background:rgba(255,255,255,.12);
+         border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:5px 13px;font-size:.8rem}
+  .badge .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+  .badge.live .dot{background:#7ED6A5}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+  .tabs button{flex:1 1 auto;min-width:180px;padding:12px 14px;border:1px solid var(--trame);
+       background:var(--blanc);color:var(--prune-dark);font-weight:600;font-size:.92rem;border-radius:10px;cursor:pointer}
+  .tabs button.on{background:var(--prune);color:#fff;border-color:var(--prune)}
+  .card{background:var(--blanc);border:1px solid var(--trame);border-radius:14px;padding:22px 22px 8px;
+        box-shadow:0 1px 3px rgba(94,19,73,.06);margin-bottom:18px}
+  .card h2{margin:0 0 4px;color:var(--prune-dark);font-size:1.15rem}
+  .card .lead{margin:0 0 16px;color:var(--gris-moyen);font-size:.9rem}
+  .field{margin-bottom:14px}
+  label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px}
+  label .hint{font-weight:400;color:var(--gris-moyen);font-size:.82rem}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--trame);border-radius:9px;font-size:1rem;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--prune);box-shadow:0 0 0 3px var(--prune-light)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row .field{flex:1 1 200px}
+  .result{background:var(--prune-light);border-left:4px solid var(--prune);border-radius:0 10px 10px 0;
+          padding:16px 18px;margin:6px 0 18px}
+  .result .big{font-size:1.7rem;font-weight:800;color:var(--prune-dark);line-height:1.15}
+  .result .big small{font-size:.95rem;font-weight:600;color:var(--gris-moyen)}
+  .steps{font-size:.86rem;color:var(--gris);margin-top:12px;border-top:1px dashed var(--accent);padding-top:10px}
+  .steps div{margin:3px 0;font-variant-numeric:tabular-nums}
+  .steps .lbl{color:var(--gris-moyen)}
+  .note{font-size:.82rem;color:var(--gris-moyen);background:var(--fond);border:1px solid var(--trame);
+        border-radius:9px;padding:10px 12px;margin-bottom:14px}
+  .warn{border-left:4px solid var(--warn);background:#FBF3E2;padding:12px 14px;border-radius:0 9px 9px 0;
+        font-size:.86rem;margin:6px 0 14px;color:#6b5111}
+  table.baremerm{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:8px}
+  table.baremerm th,table.baremerm td{border:1px solid var(--trame);padding:5px 8px;text-align:center}
+  table.baremerm th{background:var(--prune-light);color:var(--prune-dark)}
+  footer{color:var(--gris-moyen);font-size:.78rem;text-align:center;margin-top:26px;line-height:1.5}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">TMK Performances · CQP Prévoyance</div>
+    <h1>Calculateur — L'arrêt de travail</h1>
+    <p>IJ maladie · complément employeur (mensualisation) · IJ accident du travail</p>
+    <div id="srcBadge" class="badge"><span class="dot"></span><span id="srcText">Chargement des paramètres…</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button data-tab="mal" class="on">IJ maladie</button>
+    <button data-tab="mens">Complément employeur</button>
+    <button data-tab="at">IJ accident du travail</button>
+  </div>
+
+  <!-- ============ IJ MALADIE ============ -->
+  <section id="tab-mal" class="card">
+    <h2>Indemnités journalières — maladie (vie normale)</h2>
+    <p class="lead">IJ = <b>taux</b> × salaire journalier de base (SJB). SJB = total des 3 derniers salaires bruts ÷ diviseur, salaire mensuel plafonné.</p>
+    <div class="row">
+      <div class="field">
+        <label>Salaire brut mois M-1 <span class="hint">€</span></label>
+        <input type="number" id="mal_s1" value="2200" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Salaire brut mois M-2 <span class="hint">€</span></label>
+        <input type="number" id="mal_s2" value="2200" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Salaire brut mois M-3 <span class="hint">€</span></label>
+        <input type="number" id="mal_s3" value="2200" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="result" id="mal_res"></div>
+    <div class="note" id="mal_note"></div>
+  </section>
+
+  <!-- ============ MENSUALISATION ============ -->
+  <section id="tab-mens" class="card hidden">
+    <h2>Complément employeur — loi de mensualisation</h2>
+    <p class="lead">L'employeur complète les IJSS pour garantir un pourcentage du brut, sur des durées croissant avec l'ancienneté.</p>
+    <div class="row">
+      <div class="field">
+        <label>Salaire mensuel brut <span class="hint">€</span></label>
+        <input type="number" id="mens_sal" value="2200" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Ancienneté <span class="hint">années</span></label>
+        <input type="number" id="mens_anc" value="8" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>Nature de l'arrêt</label>
+        <select id="mens_nat">
+          <option value="mal">Maladie / accident de trajet</option>
+          <option value="at">Accident du travail / MP</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>IJSS brute journalière déjà versée <span class="hint">€ — laisser vide pour reprendre l'IJ maladie calculée</span></label>
+      <input type="number" id="mens_ij" placeholder="auto" min="0" step="0.01">
+    </div>
+    <div class="result" id="mens_res"></div>
+    <div class="note" id="mens_note"></div>
+    <table class="baremerm">
+      <tr><th>Ancienneté</th><th>À 90 %</th><th>À 66,66 %</th></tr>
+      <tr><td>1 à 5 ans</td><td>30 j</td><td>30 j</td></tr>
+      <tr><td>6 à 10 ans</td><td>40 j</td><td>40 j</td></tr>
+      <tr><td>11 à 15 ans</td><td>50 j</td><td>50 j</td></tr>
+      <tr><td>16 à 20 ans</td><td>60 j</td><td>60 j</td></tr>
+      <tr><td>21 à 25 ans</td><td>70 j</td><td>70 j</td></tr>
+      <tr><td>26 à 30 ans</td><td>80 j</td><td>80 j</td></tr>
+      <tr><td>31 ans et +</td><td>90 j</td><td>90 j</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ IJ AT/MP ============ -->
+  <section id="tab-at" class="card hidden">
+    <h2>Indemnités journalières — accident du travail / maladie professionnelle</h2>
+    <p class="lead">SJR = salaire brut du mois précédent ÷ diviseur. IJ = taux × SJR, dans la limite du gain journalier net et des plafonds. Aucune carence.</p>
+    <div class="row">
+      <div class="field">
+        <label>Salaire brut du mois précédant l'arrêt <span class="hint">€</span></label>
+        <input type="number" id="at_sal" value="2800" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Durée de l'arrêt <span class="hint">jours</span></label>
+        <input type="number" id="at_dur" value="40" min="1" step="1">
+      </div>
+    </div>
+    <div class="result" id="at_res"></div>
+    <div class="note" id="at_note"></div>
+  </section>
+
+  <footer>
+    TMK Performances — Organisme de formation certifié Qualiopi
+    <br>Les montants proviennent de la table <code>parametres_prevoyance</code> (Supabase) et sont
+    réactualisés à chaque revalorisation. Estimation pédagogique — ne se substitue pas au décompte officiel.
+  </footer>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Lecture des paramètres — pattern TMK : apikey en query param (évite CORS),
+   repli automatique sur des valeurs par défaut si Supabase n'est pas branché.
+   -> Renseigner SUPABASE_ANON_KEY pour activer la lecture live.
+--------------------------------------------------------------------------- */
+const SUPABASE_URL = "https://ibkvyjlglwufxvzxnysa.supabase.co";
+// Clé publique (publishable) — destinée au code public, comme vos autres fiches.
+// Le live s'active dès que la table parametres_prevoyance existe (lancer le SQL).
+const SUPABASE_ANON_KEY = "sb_publishable_xUfZHSOHf4TnBRRyzU_qJA_TcXIMSKX";
+
+// Valeurs par défaut (arrêts débutant à compter du 1er juillet 2026).
+const DEFAULTS = {
+  smic_horaire:12.31, smic_mensuel:1867.02, pmss:4005, pass:48060,
+  ij_mal_taux:0.50, ij_mal_diviseur:91.25, ij_mal_coef_plafond:1.40,
+  ij_mal_plafond_salaire:2613.82, ij_mal_montant_max:42.97, ij_mal_carence:3, ij_mal_duree_max:360,
+  mens_taux1:0.90, mens_taux2:0.6666, mens_carence_maladie:7, mens_carence_atmp:0, mens_anciennete_min:1,
+  at_taux1:0.60, at_taux2:0.80, at_diviseur_sjr:30.42, at_sjr_plafond:400.82,
+  at_coef_gain_net:0.79, at_ij_max_1_28:240.49, at_ij_max_29:320.66, at_carence:0
+};
+let P = Object.assign({}, DEFAULTS);
+let DATE_EFFET = null;
+
+async function loadParams(){
+  const badge = document.getElementById('srcBadge');
+  const txt = document.getElementById('srcText');
+  if(!SUPABASE_ANON_KEY){
+    txt.textContent = "Valeurs par défaut (2e semestre 2026) — Supabase non connecté";
+    recompute(); return;
+  }
+  try{
+    const url = SUPABASE_URL + "/rest/v1/parametres_prevoyance"
+      + "?select=cle,valeur,date_effet&apikey=" + encodeURIComponent(SUPABASE_ANON_KEY);
+    const r = await fetch(url);
+    if(!r.ok) throw new Error(r.status);
+    const rows = await r.json();
+    rows.forEach(o => { P[o.cle] = Number(o.valeur); if(o.date_effet && (!DATE_EFFET || o.date_effet>DATE_EFFET)) DATE_EFFET=o.date_effet; });
+    badge.classList.add('live');
+    txt.textContent = "Valeurs à jour depuis Supabase" + (DATE_EFFET ? " · effet au " + fmtDate(DATE_EFFET) : "");
+  }catch(e){
+    txt.textContent = "Supabase indisponible — valeurs par défaut appliquées";
+  }
+  recompute();
+}
+function fmtDate(d){const [y,m,j]=d.split('-');return j+"/"+m+"/"+y;}
+const eur = n => (Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+
+/* -------------------- IJ maladie -------------------- */
+function calcMal(){
+  const s1=+v('mal_s1'), s2=+v('mal_s2'), s3=+v('mal_s3');
+  const plaf = P.ij_mal_plafond_salaire;
+  const c1=Math.min(s1,plaf), c2=Math.min(s2,plaf), c3=Math.min(s3,plaf);
+  const total=c1+c2+c3;
+  const sjb=total/P.ij_mal_diviseur;
+  let ij=sjb*P.ij_mal_taux;
+  const plafonnee = ij>P.ij_mal_montant_max;
+  if(plafonnee) ij=P.ij_mal_montant_max;
+  const capped = (s1>plaf||s2>plaf||s3>plaf);
+  document.getElementById('mal_res').innerHTML =
+    `<div class="big">${eur(ij)} <small>/ jour (brut)</small></div>
+     <div class="steps">
+       <div><span class="lbl">Salaires retenus (plafonnés à ${eur(plaf)}) :</span> ${eur(c1)} + ${eur(c2)} + ${eur(c3)} = <b>${eur(total)}</b></div>
+       <div><span class="lbl">SJB = ${eur(total)} ÷ ${P.ij_mal_diviseur} =</span> <b>${eur(sjb)}</b></div>
+       <div><span class="lbl">IJ = SJB × ${(P.ij_mal_taux*100).toFixed(0)} % =</span> <b>${eur(sjb*P.ij_mal_taux)}</b>${plafonnee?` → plafonnée à ${eur(P.ij_mal_montant_max)}`:''}</div>
+     </div>`;
+  document.getElementById('mal_note').innerHTML =
+    `Versement à partir du <b>${P.ij_mal_carence+1}e jour</b> d'arrêt (délai de carence Sécu de ${P.ij_mal_carence} jours).
+     ${capped?'<br>⚠️ Au moins un mois dépasse le plafond de '+eur(plaf)+' : seule la fraction plafonnée est retenue.':''}
+     Durée max de versement : ${P.ij_mal_duree_max} jours sur 3 ans.`;
+  return ij;
+}
+
+/* -------------------- Mensualisation -------------------- */
+function baremeMens(anc){
+  if(anc < P.mens_anciennete_min) return null;
+  const n = Math.min(Math.floor((anc-1)/5), 6);
+  const jours = 30 + 10*n;
+  return {p1:jours, p2:jours};
+}
+function calcMens(){
+  const sal=+v('mens_sal'), anc=+v('mens_anc'), nat=v('mens_nat');
+  const brutJour = sal/30;
+  let ij = v('mens_ij')==='' ? null : +v('mens_ij');
+  if(ij===null) ij = (nat==='at') ? calcAtDay(sal,1) : calcMal(); // reprise auto
+  const bar=baremeMens(anc);
+  const res=document.getElementById('mens_res');
+  const note=document.getElementById('mens_note');
+  if(!bar){
+    res.innerHTML=`<div class="big">Pas de complément légal</div>
+      <div class="steps"><div>Ancienneté &lt; ${P.mens_anciennete_min} an : la loi de mensualisation ne s'applique pas
+      (une convention collective peut prévoir mieux). Le salarié ne perçoit que les IJSS.</div></div>`;
+    note.innerHTML=''; return;
+  }
+  const comp1=Math.max(0, brutJour*P.mens_taux1 - ij);
+  const comp2=Math.max(0, brutJour*P.mens_taux2 - ij);
+  const carence = nat==='at' ? P.mens_carence_atmp : P.mens_carence_maladie;
+  res.innerHTML=
+    `<div class="big">${eur(comp1)} <small>/ jour — 1re période (${(P.mens_taux1*100).toFixed(0)} %)</small></div>
+     <div class="steps">
+       <div><span class="lbl">Salaire journalier brut ≈</span> ${eur(sal)} ÷ 30 = <b>${eur(brutJour)}</b></div>
+       <div><span class="lbl">IJSS brute déduite :</span> ${eur(ij)}</div>
+       <div><span class="lbl">Période 1 (${bar.p1} j) :</span> ${(P.mens_taux1*100).toFixed(0)} % × ${eur(brutJour)} − ${eur(ij)} = <b>${eur(comp1)}</b>/j</div>
+       <div><span class="lbl">Période 2 (${bar.p2} j) :</span> 66,66 % × ${eur(brutJour)} − ${eur(ij)} = <b>${eur(comp2)}</b>/j</div>
+     </div>`;
+  note.innerHTML=
+    `Ancienneté ${anc} an(s) → maintien sur <b>${bar.p1} j à ${(P.mens_taux1*100).toFixed(0)} %</b> puis <b>${bar.p2} j à 66,66 %</b>.
+     Carence employeur : <b>${carence} jour(s)</b> ${carence>0?'(complément versé à partir du '+(carence+1)+'e jour)':'(dès le 1er jour, AT/MP)'}.
+     Le complément vient <b>en plus</b> des IJSS ; on déduit les IJSS <b>brutes</b>.`;
+}
+
+/* -------------------- IJ AT/MP -------------------- */
+function calcAtDay(sal, jour){ // renvoie l'IJ du jour donné
+  let sjr = sal/P.at_diviseur_sjr;
+  sjr = Math.min(sjr, P.at_sjr_plafond);
+  const gainNet = sjr*P.at_coef_gain_net;
+  const taux = jour<=28 ? P.at_taux1 : P.at_taux2;
+  const plafMax = jour<=28 ? P.at_ij_max_1_28 : P.at_ij_max_29;
+  return Math.min(sjr*taux, gainNet, plafMax);
+}
+function calcAt(){
+  const sal=+v('at_sal'), dur=+v('at_dur');
+  let sjr=sal/P.at_diviseur_sjr;
+  const plafonneSjr = sjr>P.at_sjr_plafond;
+  if(plafonneSjr) sjr=P.at_sjr_plafond;
+  const gainNet=sjr*P.at_coef_gain_net;
+  const ij1=calcAtDay(sal,1), ij29=calcAtDay(sal,29);
+  const j1=Math.min(dur,28), j2=Math.max(0,dur-28);
+  const totalBrut=ij1*j1+ij29*j2;
+  document.getElementById('at_res').innerHTML=
+    `<div class="big">${eur(ij1)} <small>/ jour (1er→28e j)</small> &nbsp;·&nbsp; ${eur(ij29)} <small>/ jour (dès 29e j)</small></div>
+     <div class="steps">
+       <div><span class="lbl">SJR = ${eur(sal)} ÷ ${P.at_diviseur_sjr} =</span> <b>${eur(sal/P.at_diviseur_sjr)}</b>${plafonneSjr?` → plafonné à ${eur(P.at_sjr_plafond)}`:''}</div>
+       <div><span class="lbl">Gain journalier net = SJR − 21 % =</span> <b>${eur(gainNet)}</b> (plafond de l'IJ)</div>
+       <div><span class="lbl">Jours 1→28 : 60 % × SJR =</span> <b>${eur(ij1)}</b>/j × ${j1} j</div>
+       <div><span class="lbl">Jours 29+ : 80 % × SJR =</span> <b>${eur(ij29)}</b>/j × ${j2} j</div>
+       <div><span class="lbl">Total brut sur ${dur} j :</span> <b>${eur(totalBrut)}</b></div>
+     </div>`;
+  document.getElementById('at_note').innerHTML=
+    `<b>Aucun délai de carence</b> : le jour de l'accident est payé par l'employeur, IJ dès le lendemain.
+     Plafonds journaliers : ${eur(P.at_ij_max_1_28)} (1→28e j) et ${eur(P.at_ij_max_29)} (dès 29e j).`;
+}
+
+/* -------------------- plomberie -------------------- */
+function v(id){return document.getElementById(id).value;}
+function recompute(){ calcMal(); calcMens(); calcAt(); }
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',recompute));
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  ['mal','mens','at'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden', t!==b.dataset.tab));
+}));
+loadParams();
+</script>
+</body>
+</html>
