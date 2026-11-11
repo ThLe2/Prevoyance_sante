@@ -148,6 +148,13 @@
         <label>Durée de l'arrêt <span class="hint">jours</span></label>
         <input type="number" id="at_dur" value="40" min="1" step="1">
       </div>
+      <div class="field">
+        <label>Date de l'accident</label>
+        <select id="at_regime">
+          <option value="reforme" selected>À compter du 01/11/2026</option>
+          <option value="avant">Avant le 01/11/2026</option>
+        </select>
+      </div>
     </div>
     <div class="result" id="at_res"></div>
     <div class="note" id="at_note"></div>
@@ -178,7 +185,9 @@ const DEFAULTS = {
   ij_mal_plafond_salaire:2613.82, ij_mal_montant_max:42.97, ij_mal_carence:3, ij_mal_duree_max:360,
   mens_taux1:0.90, mens_taux2:0.6666, mens_carence_maladie:7, mens_carence_atmp:0, mens_anciennete_min:1,
   at_taux1:0.60, at_taux2:0.80, at_diviseur_sjr:30.42, at_sjr_plafond:400.82,
-  at_coef_gain_net:0.79, at_ij_max_1_28:240.49, at_ij_max_29:320.66, at_carence:0
+  at_coef_gain_net:0.79, at_ij_max_1_28:240.49, at_ij_max_29:320.66, at_carence:0,
+  // AT/MP survenus à compter du 01/11/2026 (décret 2026-909)
+  at_sjr_plafond_reforme:108.62, at_ij_max_1_28_reforme:65.17, at_ij_max_29_reforme:86.89
 };
 let P = Object.assign({}, DEFAULTS);
 let DATE_EFFET = null;
@@ -271,19 +280,27 @@ function calcMens(){
 }
 
 /* -------------------- IJ AT/MP -------------------- */
+/* Plafonds selon la date de l'accident : réforme pour les AT/MP survenus à compter du 01/11/2026 */
+function plafAT(){
+  const avant = document.getElementById('at_regime') && document.getElementById('at_regime').value === 'avant';
+  return avant ? {sjr:P.at_sjr_plafond, m1:P.at_ij_max_1_28, m2:P.at_ij_max_29, lib:'accident survenu avant le 01/11/2026'}
+               : {sjr:P.at_sjr_plafond_reforme, m1:P.at_ij_max_1_28_reforme, m2:P.at_ij_max_29_reforme, lib:'accident survenu à compter du 01/11/2026'};
+}
 function calcAtDay(sal, jour){ // renvoie l'IJ du jour donné
   let sjr = sal/P.at_diviseur_sjr;
-  sjr = Math.min(sjr, P.at_sjr_plafond);
+  const PL = plafAT();
+  sjr = Math.min(sjr, PL.sjr);
   const gainNet = sjr*P.at_coef_gain_net;
   const taux = jour<=28 ? P.at_taux1 : P.at_taux2;
-  const plafMax = jour<=28 ? P.at_ij_max_1_28 : P.at_ij_max_29;
+  const plafMax = jour<=28 ? PL.m1 : PL.m2;
   return Math.min(sjr*taux, gainNet, plafMax);
 }
 function calcAt(){
   const sal=+v('at_sal'), dur=+v('at_dur');
   let sjr=sal/P.at_diviseur_sjr;
-  const plafonneSjr = sjr>P.at_sjr_plafond;
-  if(plafonneSjr) sjr=P.at_sjr_plafond;
+  const PL = plafAT();
+  const plafonneSjr = sjr>PL.sjr;
+  if(plafonneSjr) sjr=PL.sjr;
   const gainNet=sjr*P.at_coef_gain_net;
   const ij1=calcAtDay(sal,1), ij29=calcAtDay(sal,29);
   const j1=Math.min(dur,28), j2=Math.max(0,dur-28);
@@ -291,7 +308,7 @@ function calcAt(){
   document.getElementById('at_res').innerHTML=
     `<div class="big">${eur(ij1)} <small>/ jour (1er→28e j)</small> &nbsp;·&nbsp; ${eur(ij29)} <small>/ jour (dès 29e j)</small></div>
      <div class="steps">
-       <div><span class="lbl">SJR = ${eur(sal)} ÷ ${P.at_diviseur_sjr} =</span> <b>${eur(sal/P.at_diviseur_sjr)}</b>${plafonneSjr?` → plafonné à ${eur(P.at_sjr_plafond)}`:''}</div>
+       <div><span class="lbl">SJR = ${eur(sal)} ÷ ${P.at_diviseur_sjr} =</span> <b>${eur(sal/P.at_diviseur_sjr)}</b>${plafonneSjr?` → plafonné à ${eur(PL.sjr)}`:''}</div>
        <div><span class="lbl">Gain journalier net = SJR − 21 % =</span> <b>${eur(gainNet)}</b> (plafond de l'IJ)</div>
        <div><span class="lbl">Jours 1→28 : 60 % × SJR =</span> <b>${eur(ij1)}</b>/j × ${j1} j</div>
        <div><span class="lbl">Jours 29+ : 80 % × SJR =</span> <b>${eur(ij29)}</b>/j × ${j2} j</div>
@@ -299,7 +316,7 @@ function calcAt(){
      </div>`;
   document.getElementById('at_note').innerHTML=
     `<b>Aucun délai de carence</b> : le jour de l'accident est payé par l'employeur, IJ dès le lendemain.
-     Plafonds journaliers : ${eur(P.at_ij_max_1_28)} (1→28e j) et ${eur(P.at_ij_max_29)} (dès 29e j).`;
+     Plafonds journaliers (${PL.lib}) : ${eur(PL.m1)} (1→28e j) et ${eur(PL.m2)} (dès 29e j) ; SJR plafonné à ${eur(PL.sjr)}.`;
 }
 
 /* -------------------- plomberie -------------------- */
